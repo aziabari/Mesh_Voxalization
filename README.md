@@ -90,7 +90,7 @@ The `examples/` directory contains direct ports of the original MATLAB driver sc
 
 ```bash
 python examples/voxelise_example.py path/to/sample.stl
-python examples/blade13_5_voxelize.py path/to/blade.stl 214 25 ./tiffs/
+python examples/cad_voxelize.py path/to/blade.stl 214 25 ./tiffs/
 ```
 
 ## Tests

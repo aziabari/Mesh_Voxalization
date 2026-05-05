@@ -1,12 +1,18 @@
 """
-Port of Blade13_5_Voxelize.m.
+Port of Blade13_5_Voxelize.m (resolution-driven version).
 
-Voxelises a turbine-blade STL at a chosen X-resolution (so Y and Z resolutions
-follow from the bounding box aspect ratio), then embeds the result in a larger
+Voxelises an STL at a chosen voxel *resolution* (so the slice counts on each
+axis follow from the bounding box), then embeds the result in a larger
 zero-padded volume and saves both:
 
 * a ``.npz`` file with the padded ``int8`` voxel volume, and
-* one TIFF per Z-slice for downstream slice-based workflows.
+* (optionally) one TIFF per Z-slice for downstream slice-based workflows.
+
+Equivalent MATLAB:
+    resol   = 0.5;
+    xslices = round(mmx/resol);
+    yslices = round(xslices * mmy/mmx);
+    zslices = round(xslices * mmz/mmx);
 """
 
 import os
@@ -21,7 +27,7 @@ from mesh_voxelisation import read_stl, voxelise
 
 def main(
     filename: str,
-    xslices: int = 214,
+    resol: float = 0.5,
     padding: int = 25,
     out_folder: str | None = None,
 ) -> None:
@@ -42,16 +48,18 @@ def main(
     ax.set_box_aspect((1, 1, 1))
 
     # -------------------------------------------------------------
-    # 2. Pick voxel grid sizes from bounding-box aspect ratio.
+    # 2. Pick voxel grid sizes from the requested resolution.
+    #    Slice counts on Y and Z follow from the bounding-box aspect ratio
+    #    so that voxels stay (approximately) cubic.
     # -------------------------------------------------------------
     mmx = triangles[..., 0].max() - triangles[..., 0].min()
     mmy = triangles[..., 1].max() - triangles[..., 1].min()
     mmz = triangles[..., 2].max() - triangles[..., 2].min()
 
+    xslices = round(mmx / resol)
     yslices = round(xslices * mmy / mmx)
     zslices = round(xslices * mmz / mmx)
-    resol = mmx / xslices
-    print(f"Resolution: {resol:.6g}   grid: {xslices} x {yslices} x {zslices}")
+    print(f"Resolution: {resol:g}   grid: {xslices} x {yslices} x {zslices}")
 
     # -------------------------------------------------------------
     # 3. Voxelise.
@@ -74,13 +82,9 @@ def main(
 
     blade_out = np.zeros((xyl, xyl, zl), dtype=np.float64)
 
-    # Centre the voxelised region inside the padded volume. The MATLAB
-    # `xyl/2-ceil(xslices/2)+1 : xyl/2+floor(xslices/2)` formula simplifies
-    # in 0-indexed Python to a nicely centred slice of length ``xslices``.
+    # Centre the voxelised region inside the padded volume.
     def _centred_slice(outer: int, inner: int) -> slice:
-        start = outer // 2 - (inner + 1) // 2 + 1 - 1  # MATLAB->Python: -1 then +1 net 0
-        # Equivalently: start = outer//2 - ceil(inner/2)
-        start = outer // 2 - -(-inner // 2)
+        start = outer // 2 - -(-inner // 2)  # ceil-div
         return slice(start, start + inner)
 
     blade_out[
@@ -120,7 +124,8 @@ def main(
         try:
             from PIL import Image
         except ImportError:
-            print("Pillow not installed — skipping TIFF export.")
+            print("Pillow not installed - skipping TIFF export.")
+            plt.show()
             return
 
         os.makedirs(out_folder, exist_ok=True)
@@ -133,13 +138,24 @@ def main(
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python blade13_5_voxelize.py <stl_file> [xslices] [padding] [out_folder]")
-        sys.exit(1)
-    args = sys.argv[1:]
-    main(
-        args[0],
-        xslices=int(args[1]) if len(args) > 1 else 214,
-        padding=int(args[2]) if len(args) > 2 else 25,
-        out_folder=args[3] if len(args) > 3 else None,
-    )
+    # ----------------------------------------------------------------
+    # Defaults for IDE use: edit these four lines and hit Run.
+    # For command-line use: pass them as positional args.
+    # ----------------------------------------------------------------
+    DEFAULT_FILENAME = "P3_Polymer_Solid_AH_can.STL"
+    DEFAULT_RESOL    = 0.5
+    DEFAULT_PADDING  = 25
+    DEFAULT_OUT_DIR  = None  # e.g. "./tiffs/" to write TIFF slices
+
+    if len(sys.argv) >= 2:
+        args = sys.argv[1:]
+        filename   = args[0]
+        resol      = float(args[1]) if len(args) > 1 else DEFAULT_RESOL
+        padding    = int(args[2])   if len(args) > 2 else DEFAULT_PADDING
+        out_folder = args[3]        if len(args) > 3 else DEFAULT_OUT_DIR
+    else:
+        filename, resol, padding, out_folder = (
+            DEFAULT_FILENAME, DEFAULT_RESOL, DEFAULT_PADDING, DEFAULT_OUT_DIR,
+        )
+
+    main(filename, resol=resol, padding=padding, out_folder=out_folder)
