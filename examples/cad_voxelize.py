@@ -2,11 +2,10 @@
 Port of Blade13_5_Voxelize.m (resolution-driven version).
 
 Voxelises an STL at a chosen voxel *resolution* (so the slice counts on each
-axis follow from the bounding box), then embeds the result in a larger
-zero-padded volume and saves both:
-
-* a ``.npz`` file with the padded ``int8`` voxel volume, and
-* (optionally) one TIFF per Z-slice for downstream slice-based workflows.
+axis follow from the bounding box), embeds the result in a larger zero-padded
+volume, and saves it as a single ``.npy`` file. The output filename is
+``<input_basename_with_spaces_replaced>_voxelized_{resol}mm.npy``, written
+either next to the input STL or into ``out_folder`` if one is supplied.
 
 Equivalent MATLAB:
     resol   = 0.5;
@@ -96,18 +95,25 @@ def main(
     temp = blade_out.astype(np.int8)
 
     # -------------------------------------------------------------
-    # 5. Save the padded volume.
+    # 5. Save the padded volume as a single .npy file.
+    #    Output name: <input_basename_with_spaces_replaced>_voxelized_{resol}mm.npy
+    #    Written to out_folder if given, else next to the input STL.
     # -------------------------------------------------------------
-    base, _ = os.path.splitext(filename)
-    out_filename = (
-        f"{base}_resol={resol:g}_dims={xyl}x{xyl}x{zl}_withPadding10slice.npz"
-    )
-    np.savez_compressed(out_filename, temp=temp)
+    if out_folder is not None:
+        os.makedirs(out_folder, exist_ok=True)
+        out_dir = out_folder
+    else:
+        out_dir = os.path.dirname(os.path.abspath(filename)) or "."
+
+    in_base, _ = os.path.splitext(os.path.basename(filename))
+    safe_base = in_base.replace(" ", "_")
+    out_filename = os.path.join(out_dir, f"{safe_base}_voxelized_{resol:g}mm.npy")
+    np.save(out_filename, temp)
     print(f"Saved padded volume -> {out_filename}")
 
     # Slice previews of the padded volume.
-    zid = padding + zslices // 2
-    xid = padding + xyl // 2
+    zid = zl // 2
+    xid = xyl // 2
     fig3, axes3 = plt.subplots(1, 2, figsize=(8, 4))
     axes3[0].imshow(temp[:, :, zid], cmap="gray")
     axes3[0].set_xlabel("Y"); axes3[0].set_ylabel("X")
@@ -116,23 +122,6 @@ def main(
     axes3[1].set_xlabel("Z"); axes3[1].set_ylabel("Y")
     axes3[1].set_title(f"X slice {xid}"); axes3[1].set_aspect("equal")
     plt.tight_layout()
-
-    # -------------------------------------------------------------
-    # 6. Optional TIFF stack.
-    # -------------------------------------------------------------
-    if out_folder is not None:
-        try:
-            from PIL import Image
-        except ImportError:
-            print("Pillow not installed - skipping TIFF export.")
-            plt.show()
-            return
-
-        os.makedirs(out_folder, exist_ok=True)
-        for i in range(zl):
-            img = Image.fromarray((temp[:, :, i] > 0).astype(np.uint8) * 255, "L")
-            img.save(os.path.join(out_folder, f"_{i}.tiff"), compression=None)
-        print(f"Wrote {zl} TIFF slices to {out_folder}")
 
     plt.show()
 
@@ -145,7 +134,7 @@ if __name__ == "__main__":
     DEFAULT_FILENAME = "P3_Polymer_Solid_AH_can.STL"
     DEFAULT_RESOL    = 0.5
     DEFAULT_PADDING  = 25
-    DEFAULT_OUT_DIR  = None  # e.g. "./tiffs/" to write TIFF slices
+    DEFAULT_OUT_DIR  = None  # None => save next to input; else a folder path
 
     if len(sys.argv) >= 2:
         args = sys.argv[1:]
