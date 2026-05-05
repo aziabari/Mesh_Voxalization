@@ -1,0 +1,12 @@
+README.md
+pyproject.toml
+mesh_voxelisation/__init__.py
+mesh_voxelisation/mesh_utils.py
+mesh_voxelisation/stl_io.py
+mesh_voxelisation/voxelise.py
+mesh_voxelisation.egg-info/PKG-INFO
+mesh_voxelisation.egg-info/SOURCES.txt
+mesh_voxelisation.egg-info/dependency_links.txt
+mesh_voxelisation.egg-info/requires.txt
+mesh_voxelisation.egg-info/top_level.txt
+tests/test_voxelise.py

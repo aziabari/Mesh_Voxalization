@@ -1,0 +1,13 @@
+name: mesh_voxelisation
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy>=1.20
+  # Used by the example scripts (plotting + TIFF export):
+  - matplotlib>=3.5
+  - pillow>=9.0
+  # Optional: for running the test script with pytest if you prefer:
+  - pytest>=7.0
+  # Optional: handy if you want .mat compatibility with the original MATLAB outputs:
+  - scipy

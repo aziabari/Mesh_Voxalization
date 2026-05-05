@@ -1,0 +1,118 @@
+# mesh_voxelisation
+
+Voxelise a closed (watertight) triangular-polygon mesh into a 3-D boolean grid.
+
+This is a Python port of the MATLAB code [`Mesh_voxelisation`](https://uk.mathworks.com/matlabcentral/fileexchange/27390-mesh-voxelisation) by Adam H. Aitkenhead (The Christie NHS Foundation Trust). The numerics are identical; the implementation has been vectorised with NumPy where the original MATLAB had per-pixel `for` loops.
+
+## Install
+
+### Recommended: conda
+
+```bash
+cd mesh_voxelisation
+conda env create -f environment.yml
+conda activate mesh_voxelisation
+pip install -e .                  # installs the local package itself
+python tests/test_voxelise.py     # sanity check
+```
+
+The `pip install -e .` step registers this folder as a package in the active conda environment, so `from mesh_voxelisation import voxelise` works from any directory. The `-e` (editable) flag means edits to the source files take effect immediately — no need to reinstall after each change.
+
+You only need to run `pip install -e .` **once per environment**. If you create a new conda env later and want to use the package there too, run it again inside that new env.
+
+### Pip-only
+
+```bash
+cd mesh_voxelisation
+pip install -r requirements.txt
+pip install -e .
+```
+
+### Minimal install
+
+Only NumPy is required for the core library; `matplotlib` and `Pillow` are only used by the example scripts. For a leaner setup:
+
+```bash
+pip install numpy
+pip install -e .
+```
+
+## Quick start
+
+```python
+from mesh_voxelisation import voxelise
+
+# 100x100x100 voxels, auto-fitted to the mesh's bounding box
+grid = voxelise(100, 100, 100, "model.stl")
+print(grid.shape, grid.dtype)
+# (100, 100, 100) bool
+
+# Get the voxel-centre coordinates back too
+grid, x, y, z = voxelise(100, 100, 100, "model.stl", return_coords=True)
+```
+
+## Inputs
+
+The mesh argument can be any of:
+
+- An STL filename (ASCII or binary, auto-detected).
+- An `(N, 3, 3)` NumPy array — the MATLAB `meshXYZ` layout (axis 0 = facet, axis 1 = `(x, y, z)`, axis 2 = vertex index).
+- A `dict` with `'faces'` and `'vertices'` keys (same shape as `isosurface` / `trimesh`).
+- A `(faces, vertices)` tuple.
+
+The grid arguments can each be either an explicit 1-D coordinate array or a scalar integer (let the code auto-fit the bounding box). Set any axis to `1` to collapse it to a single mid-mesh slice.
+
+## Ray direction
+
+```python
+grid = voxelise(..., raydirection="xyz")  # default — most robust, slowest
+grid = voxelise(..., raydirection="z")    # fast, but vulnerable to edge artefacts
+```
+
+With multiple ray directions, results are combined by majority vote.
+
+## API summary
+
+| Function | Purpose |
+| --- | --- |
+| `voxelise(gx, gy, gz, mesh, ...)` | Main entry point. |
+| `read_stl(filename)` | Read an STL file -> `(coord_vertices, coord_normals, name)`. |
+| `compute_mesh_normals(mesh)` | Per-facet unit normals. |
+| `convert_meshformat(...)` | Convert between `(faces, vertices)` and `(N, 3, 3)` formats. |
+
+## Examples
+
+The `examples/` directory contains direct ports of the original MATLAB driver scripts:
+
+- `voxelise_example.py` — voxelise `sample.stl` at 100³ and show three orthographic projections.
+- `blade13_5_voxelize.py` — voxelise a turbine-blade STL at a target X-resolution, embed in a zero-padded volume, save `.npz`, optionally export TIFFs.
+- `rtrc_bhousing_voxelize.py` — same workflow, driven by a target voxel resolution rather than a target X-count.
+
+```bash
+python examples/voxelise_example.py path/to/sample.stl
+python examples/blade13_5_voxelize.py path/to/blade.stl 214 25 ./tiffs/
+```
+
+## Tests
+
+```bash
+python tests/test_voxelise.py
+```
+
+Tests check the voxeliser against shapes with analytically known volumes (cube, sphere) and verify all three single-axis ray directions agree.
+
+## Notes
+
+- **The mesh must be watertight.** Open meshes will produce nonsense.
+- Differences from the MATLAB original:
+  - The optional vertex-ordering check in `compute_mesh_normals` (MATLAB's two-output mode) is not ported — it's slow and fragile on non-manifold meshes. Use [`trimesh`](https://github.com/mikedh/trimesh) if you need to fix winding order.
+  - All MATLAB 1-based pixel indices become 0-based.
+  - The output grid is a NumPy `bool` array (axis order: `(x, y, z)`, same as the MATLAB version).
+
+## Reference
+
+Patil S and Ravi B. *Voxel-based representation, display and thickness analysis of intricate shapes.* Ninth International Conference on Computer Aided Design and Computer Graphics (CAD/CG 2005).
+
+## License
+
+BSD-3-Clause (matches the original MATLAB code's spirit; verify with the original author before commercial use).
