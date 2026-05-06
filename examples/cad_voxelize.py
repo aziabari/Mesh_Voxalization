@@ -20,7 +20,7 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-
+import tifffile
 from mesh_voxelisation import read_stl, voxelise
 
 
@@ -29,6 +29,7 @@ def main(
     resol: float = 0.5,
     padding: int = 25,
     out_folder: str | None = None,
+    out_dtype: str | None = None,
 ) -> None:
     # -------------------------------------------------------------
     # 1. Plot the input STL.
@@ -107,8 +108,12 @@ def main(
 
     in_base, _ = os.path.splitext(os.path.basename(filename))
     safe_base = in_base.replace(" ", "_")
-    out_filename = os.path.join(out_dir, f"{safe_base}_voxelized_{resol:g}mm.npy")
-    np.save(out_filename, temp)
+    if out_dtype is "tif" or out_dtype is "tiff":
+        out_filename = os.path.join(out_dir, f"{safe_base}_voxelized_{resol:g}mm.tiff")
+        tifffile.imwrite(out_filename,temp)
+    else:
+        out_filename = os.path.join(out_dir, f"{safe_base}_voxelized_{resol:g}mm.npy")
+        np.save(out_filename, temp)
     print(f"Saved padded volume -> {out_filename}")
 
     # Slice previews of the padded volume.
@@ -135,6 +140,7 @@ if __name__ == "__main__":
     DEFAULT_RESOL    = 0.5
     DEFAULT_PADDING  = 25
     DEFAULT_OUT_DIR  = None  # None => save next to input; else a folder path
+    DEFAULT_OUT_TYPE = ".npy"
 
     if len(sys.argv) >= 2:
         args = sys.argv[1:]
@@ -142,9 +148,10 @@ if __name__ == "__main__":
         resol      = float(args[1]) if len(args) > 1 else DEFAULT_RESOL
         padding    = int(args[2])   if len(args) > 2 else DEFAULT_PADDING
         out_folder = args[3]        if len(args) > 3 else DEFAULT_OUT_DIR
+        out_dtype = args[4] if len(args) > 4 else DEFAULT_OUT_TYPE
     else:
-        filename, resol, padding, out_folder = (
-            DEFAULT_FILENAME, DEFAULT_RESOL, DEFAULT_PADDING, DEFAULT_OUT_DIR,
+        filename, resol, padding, out_folder, out_dtype = (
+            DEFAULT_FILENAME, DEFAULT_RESOL, DEFAULT_PADDING, DEFAULT_OUT_DIR, DEFAULT_OUT_TYPE,
         )
 
     main(filename, resol=resol, padding=padding, out_folder=out_folder)

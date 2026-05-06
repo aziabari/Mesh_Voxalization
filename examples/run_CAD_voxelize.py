@@ -2,8 +2,9 @@
 from cad_voxelize import main
 
 main(
-    "/Users/3az/ORNL Dropbox/Amir Ziabari/TIP/TCF/2022-2023/code/Mesh_voxelisation/extra_files/01 ZCS AMMT Zeiss DOE 07.stl",
-    resol=0.05,
+    "/Users/3az/Library/CloudStorage/OneDrive-OakRidgeNationalLaboratory/2025-2026/Leidos/CUI_GAMMA-H Part.STL",
+    resol=0.36,
     padding=25,
-    out_folder="/Users/3az/ORNL Dropbox/Amir Ziabari/FY24-25_onward/Research/2026/AMMTO/Data/Mesh_voxelize_output/",
+    out_folder="/Users/3az/Library/CloudStorage/OneDrive-OakRidgeNationalLaboratory/2025-2026/Leidos/",
+    out_dtype="tiff", # "npy"
 )
